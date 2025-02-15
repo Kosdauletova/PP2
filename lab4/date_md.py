@@ -1,5 +1,5 @@
 # subtract 5 days from current date
-'''
+
 import datetime
 current=datetime.datetime.now()
 
@@ -9,9 +9,9 @@ x = current - datetime.timedelta(days=5)
 print("current date: ",current.strftime("%Y-%m-%d"))
 print("5 days ago: ",x.strftime("%Y-%m-%d"))
 
-'''
+
 #yesterday,today,tomorrow
-'''
+
 import datetime
 current=datetime.datetime.now()
 
@@ -24,11 +24,11 @@ print("yesterday: ", yesterday.strftime("%Y-%m-%d"))
 print("current date: ", current.strftime("%Y-%m-%d"))
 print("tomorrow: ", tomorrow.strftime("%Y-%m-%d"))
 
-'''
+
 
 #drop microseconds from datetime
 
-'''
+
 import datetime 
 current = datetime.datetime.now()
 x = current.replace(microsecond=0)
@@ -36,7 +36,7 @@ x = current.replace(microsecond=0)
 print("Current date: ", current)
 print("Without microsecinds: ", x)
 
-'''
+
 
 #two date difference in seconds
 import datetime
