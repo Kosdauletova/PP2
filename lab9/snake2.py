@@ -5,22 +5,25 @@ import time
 
 pygame.init()
 
-
+# Устанавливаем размеры экрана
 width, height = 600, 400
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption('Snake Game')
 
-
+# Цвета
 white = (255, 255, 255)
 black = (0, 0, 0)
 red = (213, 50, 80)
 green = (0, 255, 0)
+tan = (210, 180, 140)
+yellow = (255, 255, 0)
 blue = (50, 153, 213)
+purple = (128, 0, 128)
 
-
+# Инициализация игры
 clock = pygame.time.Clock()
 snake_block = 10
-snake_speed = 5  #начальная скорость змейки
+snake_speed = 10  
 font_style = pygame.font.SysFont("bahnschrift", 25)
 score_font = pygame.font.SysFont("comicsansms", 35)
 
@@ -28,56 +31,53 @@ def message(msg, color):
     mesg = font_style.render(msg, True, color)
     screen.blit(mesg, [width / 6, height / 3])
 
-#счет и уровень на экране
 def score_level(score, level):
     value = score_font.render("Score: " + str(score) + " Level: " + str(level), True, black)
     screen.blit(value, [0, 0])
-
 
 def our_snake(snake_block, snake_list):
     for x in snake_list:
         pygame.draw.rect(screen, green, [x[0], x[1], snake_block, snake_block])
 
-#еда
-class Food:
-    def __init__(self):
+# Класс для фруктов
+class Fruit:
+    def __init__(self, color, points, lifespan):
+        self.color = color
+        self.points = points
+        self.lifespan = lifespan
         self.x = round(random.randrange(0, width - snake_block) / 10.0) * 10.0
         self.y = round(random.randrange(0, height - snake_block) / 10.0) * 10.0
-        self.weight = random.randint(1, 3)  #случайный вес еды
-        self.time_limit = time.time() + random.randint(5, 10)  #таймер для исчезновения еды 
+        self.creation_time = time.time()  # Запоминаем время создания фрукта
 
-    
+    def draw(self):
+        pygame.draw.rect(screen, self.color, [self.x, self.y, snake_block, snake_block])
+
     def is_expired(self):
-        return time.time() > self.time_limit
-
+        return time.time() - self.creation_time > self.lifespan
 
 def gameLoop():
     game_over = False
     game_close = False
 
-    #координаты змейки
+    # Инициализация змейки
     x1 = width / 2
     y1 = height / 2
-
-    
     x1_change = 0
     y1_change = 0
-
-    snake_List = []  
-    Length_of_snake = 1  #начальная длина змейки
+    snake_List = []
+    Length_of_snake = 1
 
     score = 0
     level = 1
 
     global snake_speed
 
-    
-    food = Food()
+    fruits = []
+    fruit_timer = 0
 
     while not game_over:
-
         while game_close:
-            screen.fill(blue)
+            screen.fill(tan)
             message("You Lost! Press Q-Quit or C-Play Again", red)
             score_level(score, level)
             pygame.display.update()
@@ -90,7 +90,6 @@ def gameLoop():
                     if event.key == pygame.K_c:
                         gameLoop()
 
-        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_over = True
@@ -108,20 +107,28 @@ def gameLoop():
                     y1_change = snake_block
                     x1_change = 0
 
-        #выход за пределы экрана
         if x1 >= width or x1 < 0 or y1 >= height or y1 < 0:
             game_close = True
         x1 += x1_change
         y1 += y1_change
-        screen.fill(blue)
+        screen.fill(tan)
 
-        
-        if not food.is_expired():  
-            pygame.draw.rect(screen, black, [food.x, food.y, snake_block, snake_block])
-        else:
-            food = Food()  #если еда исчезла, делаем новую
+        # Генерация фруктов
+        fruit_timer += 1
+        if fruit_timer > 50:  # Каждые 50 кадров появляется новый фрукт
+            fruit_timer = 0
+            color = random.choice([red, yellow, blue, purple])
+            points = random.choice([10, 20, 30])
+            lifespan = random.choice([5, 8, 12])  # Время жизни фрукта в секундах
+            fruits.append(Fruit(color, points, lifespan))
 
-        #отрисовка змейки
+        # Отображаем все фрукты и проверяем их на истечение времени
+        for fruit in fruits[:]:
+            fruit.draw()
+            if fruit.is_expired():  # Если фрукт "испорчен", удаляем его
+                fruits.remove(fruit)
+
+        # Рисуем змейку
         snake_Head = []
         snake_Head.append(x1)
         snake_Head.append(y1)
@@ -139,17 +146,17 @@ def gameLoop():
 
         pygame.display.update()
 
-        #столкновение с едой
-        if x1 == food.x and y1 == food.y:
-            food = Food()  #генерация новой еды
-            Length_of_snake += 1  #увеличение длины нашей змейки
-            score += food.weight * 10  #очки в зависимости от веса еды
-
-            if score % 40 == 0:  #увеличиваем уровень после каждых 40 оч
-                level += 1
-                snake_speed += 2  #увеличиваем скорость 
-                print(f"Level {level} reached!")
-
+        # Проверка на столкновение с фруктами
+        for fruit in fruits[:]:
+            if x1 == fruit.x and y1 == fruit.y:
+                fruits.remove(fruit)
+                score += fruit.points
+                Length_of_snake += 1
+                if score % 40 == 0:  
+                    level += 1
+                    snake_speed += 2  
+                    print(f"Level {level} reached!")
+                
         clock.tick(snake_speed)
 
     pygame.quit()

@@ -1,139 +1,88 @@
 import pygame
-import sys
-
-
 pygame.init()
 
-
-width, height = 800, 600
-screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Программа для рисования")
-
-
+#начальные настройки
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-ORANGE = (255, 165, 0)
-YELLOW = (255, 255, 0)
-GREEN = (0, 255, 0)
-CYAN = (0, 255, 255)
-BLUE = (0, 0, 255)
+PINK = (255, 192, 203)
 VIOLET = (238, 130, 238)
-PINK = (255, 105, 180)
+CYAN = (0, 255, 255)
 
-COLOR_CHOICES = [RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, VIOLET, PINK, BLACK]
-current_color = BLACK
-
-
-brush_size = 5
-drawing = False
-shape_mode = 'line'  
-start_x, start_y = 0, 0
-
-#функции для рисования форм
-def draw_rect(surface, color, start_pos, end_pos):
-    pygame.draw.rect(surface, color, pygame.Rect(start_pos[0], start_pos[1], end_pos[0] - start_pos[0], end_pos[1] - start_pos[1]), 2)
-
-def draw_circle(surface, color, start_pos, end_pos):
-    radius = int(((end_pos[0] - start_pos[0]) ** 2 + (end_pos[1] - start_pos[1]) ** 2) ** 0.5)
-    pygame.draw.circle(surface, color, start_pos, radius, 2)
-
-def erase(surface, start_pos, end_pos):
-    pygame.draw.rect(surface, WHITE, pygame.Rect(start_pos[0], start_pos[1], end_pos[0] - start_pos[0], end_pos[1] - start_pos[1]))
-
-def draw_line(surface, color, start_pos, end_pos):
-    pygame.draw.line(surface, color, start_pos, end_pos, brush_size)
+#настройки окна
+WINDOW_WIDTH = 500
+WINDOW_HEIGHT = 500
+screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+pygame.display.set_caption("Paint")
+clock = pygame.time.Clock()
 
 
-def clear_screen(surface):
-    surface.fill(WHITE)
+game_over = False
+prev, cur = None, None
+screen.fill(WHITE)
+current_color = PINK
+mode = 'draw'  # 'draw', 'rect', 'circle', 'erase'
 
-#основной цикл игры
-def main():
-    global drawing, start_x, start_y, shape_mode, current_color
+font = pygame.font.SysFont(None, 24)
 
-    
-    drawing_surface = pygame.Surface((width, height))
-    drawing_surface.fill(WHITE)
-    screen.fill(WHITE)
+def draw_toolbar():
+    pygame.draw.rect(screen, BLACK, (0, 0, WINDOW_WIDTH, 40))
+    colors = [PINK, VIOLET, CYAN, BLACK]
+    for i, color in enumerate(colors):
+        pygame.draw.rect(screen, color, (10 + i * 50, 5, 40, 30))
+    pygame.draw.rect(screen, WHITE, (210, 5, 40, 30))  # Eraser
+    pygame.draw.rect(screen, WHITE, (260, 5, 40, 30))  # Rect
+    pygame.draw.rect(screen, WHITE, (310, 5, 40, 30))  # Circle
+    screen.blit(font.render("E", True, BLACK), (220, 10))
+    screen.blit(font.render("R", True, BLACK), (270, 10))
+    screen.blit(font.render("C", True, BLACK), (320, 10))
 
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+while not game_over:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            game_over = True
 
-            
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_1:
-                    current_color = RED
-                elif event.key == pygame.K_2:
-                    current_color = ORANGE
-                elif event.key == pygame.K_3:
-                    current_color = YELLOW
-                elif event.key == pygame.K_4:
-                    current_color = GREEN
-                elif event.key == pygame.K_5:
-                    current_color = CYAN
-                elif event.key == pygame.K_6:
-                    current_color = BLUE
-                elif event.key == pygame.K_7:
-                    current_color = VIOLET
-                elif event.key == pygame.K_8:
-                    current_color = PINK
-                elif event.key == pygame.K_9:
-                    current_color = BLACK
-                elif event.key == pygame.K_0:
-                    current_color = WHITE  #ластик
-                elif event.key == pygame.K_c:
-                    shape_mode = 'circle'
-                elif event.key == pygame.K_r:
-                    shape_mode = 'rect'
-                elif event.key == pygame.K_x:
-                    clear_screen(drawing_surface)  #очистка экрана
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            x, y = event.pos
+            if y < 40:
+                if 10 <= x < 50:
+                    current_color, mode = PINK, 'draw'
+                elif 60 <= x < 100:
+                    current_color, mode = VIOLET, 'draw'
+                elif 110 <= x < 150:
+                    current_color, mode = CYAN, 'draw'
+                elif 160 <= x < 200:
+                    current_color, mode = BLACK, 'draw'
+                elif 210 <= x < 250:
+                    current_color, mode = WHITE, 'erase'
+                elif 260 <= x < 300:
+                    mode = 'rect'
+                elif 310 <= x < 350:
+                    mode = 'circle'
+            else:
+                prev = event.pos
 
-            
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  
-                    drawing = True
-                    start_x, start_y = event.pos
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if mode == 'rect' and prev:
+                cur = event.pos
+                x1, y1 = prev
+                x2, y2 = cur
+                pygame.draw.rect(screen, current_color, pygame.Rect(min(x1,x2), min(y1,y2), abs(x2-x1), abs(y2-y1)), 1)
+            elif mode == 'circle' and prev:
+                cur = event.pos
+                x1, y1 = prev
+                x2, y2 = cur
+                radius = int(((x2 - x1)**2 + (y2 - y1)**2)**0.5)
+                pygame.draw.circle(screen, current_color, (x1, y1), radius, 1)
+            prev = None
 
-            elif event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 1:
-                    drawing = False
-                    if shape_mode == 'rect':
-                        draw_rect(drawing_surface, current_color, (start_x, start_y), event.pos)
-                    elif shape_mode == 'circle':
-                        draw_circle(drawing_surface, current_color, (start_x, start_y), event.pos)
-                    elif shape_mode == 'line':
-                        draw_line(drawing_surface, current_color, (start_x, start_y), event.pos)
+        elif event.type == pygame.MOUSEMOTION:
+            if pygame.mouse.get_pressed()[0] and prev and mode in ['draw', 'erase']:
+                cur = pygame.mouse.get_pos()
+                pygame.draw.line(screen, current_color, prev, cur, 3)
+                prev = cur
 
-            elif event.type == pygame.MOUSEMOTION:
-                if drawing:
-                    if shape_mode == 'line':
-                        draw_line(drawing_surface, current_color, (start_x, start_y), event.pos)
-                        start_x, start_y = event.pos
-                    elif shape_mode == 'rect':
-                        #просто рисуем прямоугольник, пока мышь двигается
-                        screen.fill(WHITE)
-                        screen.blit(drawing_surface, (0, 0))
-                        draw_rect(screen, current_color, (start_x, start_y), event.pos)
-                    elif shape_mode == 'circle':
-                        #просто рисуем круг, пока мышь двигается
-                        screen.fill(WHITE)
-                        screen.blit(drawing_surface, (0, 0))
-                        draw_circle(screen, current_color, (start_x, start_y), event.pos)
-                    elif current_color == WHITE:  #ластик
-                        erase(drawing_surface, (start_x, start_y), event.pos)
-                        start_x, start_y = event.pos
+    draw_toolbar()
+    pygame.display.flip()
+    clock.tick(30)
 
-        
-        screen.fill(WHITE)  
-        screen.blit(drawing_surface, (0, 0))  
-
-        
-        pygame.display.update()
-
-
-if __name__ == "__main__":
-    main()
+pygame.quit()

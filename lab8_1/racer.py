@@ -1,100 +1,173 @@
-import pygame
-import random
+import pygame, sys
+from pygame.locals import *
+import random, time
 
 pygame.init()
 
-screen_width = 800
-screen_height = 600
-screen = pygame.display.set_mode((screen_width, screen_height))
-pygame.display.set_caption("Racer Game")
-
-
-WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
-BLACK = (0, 0, 0)
-
-
+#контроль обновления фреймов
+FPS = 60
 clock = pygame.time.Clock()
 
-class Racer:
+#цвета
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+
+#окно и начальные настройки
+W, H = 400, 600
+SPEED = 5               #скорость врагов
+SCORE = 0               #счет врагов
+COINS = 0               #монеточки
+
+#настройки для шрифта
+font = pygame.font.Font("font_user.ttf", 60)
+font_small = pygame.font.Font("font_user.ttf", 20)
+game_over = font.render("Game Over", True, BLACK)
+
+#изображения для монеточек и размер
+coin_icon = pygame.image.load("im/Coin.png")
+coin_icon = pygame.transform.scale(coin_icon, (coin_icon.get_width()//15, coin_icon.get_height()//10))
+
+#загрузка заднего фона
+bg = pygame.image.load("im/AnimatedStreet.png")
+
+
+SC = pygame.display.set_mode((W, H))
+SC.fill(WHITE)
+pygame.display.set_caption("My game")
+
+# ========================
+# SPRITE CLASSES
+# ========================
+
+#класс врага
+class Enemy(pygame.sprite.Sprite):
     def __init__(self):
-        self.x = screen_width // 2
-        self.y = screen_height - 60
-        self.width = 50
-        self.height = 80
-        self.speed = 5
-        self.image = pygame.Surface((self.width, self.height))
-        self.image.fill(GREEN)
-
-    def move(self, keys):
-        if keys[pygame.K_LEFT] and self.x > 0:
-            self.x -= self.speed
-        if keys[pygame.K_RIGHT] and self.x < screen_width - self.width:
-            self.x += self.speed
-
-    def draw(self):
-        screen.blit(self.image, (self.x, self.y))
-
-
-
-class Coin:
-    def __init__(self):
-        self.x = random.randint(0, screen_width - 30)
-        self.y = random.randint(-100, -40)
-        self.width = 30
-        self.height = 30
-        self.image = pygame.Surface((self.width, self.height))
-        self.image.fill((255, 223, 0))  # Yellow for coins
+        super().__init__()
+        self.image = pygame.image.load("im/Enemy.png")
+        self.rect = self.image.get_rect()
+        self.rect.center = (random.randint(40, W-40), 0)  #рандомный горизонтальный спавн
 
     def move(self):
-        self.y += 5
-        if self.y > screen_height:
-            self.y = random.randint(-100, -40)
-            self.x = random.randint(0, screen_width - self.width)
+        global SCORE
+        self.rect.move_ip(0, SPEED)  
+        if self.rect.top > H:        
+            SCORE += 1
+            self.rect.top = 0
+            self.rect.center = (random.randint(40, W-40), 0)
+            #Перемещает врага вниз, и если он выходит за пределы экрана, 
+            #он появляется в верхней части с новым случайным положен
 
-    def draw(self):
-        screen.blit(self.image, (self.x, self.y))
+#класс игрока
+class Player(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = pygame.image.load("im/Player.png")
+        self.rect = self.image.get_rect()
+        self.rect.center = (160, 520)
 
+    def move(self):
+        pressed_key = pygame.key.get_pressed()
+        if self.rect.left > 1 and pressed_key[K_LEFT]:
+            self.rect.move_ip(-5, 0)
+        if self.rect.right < W and pressed_key[K_RIGHT]:
+            self.rect.move_ip(5, 0)
+    #Управляет движением игрока влево и вправо при нажатии на клавиши стрелок. 
+    #Учитывается, чтобы игрок не выходил за пределы экрана.
 
-def game_loop():
-    racer = Racer()
-    coins = [Coin() for _ in range(5)]  # Create a few coins
-    collected_coins = 0
-    running = True
-    while running:
-        screen.fill(BLACK)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+#класс монеточек
+class Coin(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = pygame.image.load("im/Coin.png")
+        self.image = pygame.transform.scale(self.image, (self.image.get_width()//12, self.image.get_height()//12))
+        self.rect = self.image.get_rect()
+        self.rect.center = (random.randint(40, W-40), 0)
 
-        keys = pygame.key.get_pressed()
-        racer.move(keys)
-        racer.draw()
+    def move(self):
+        self.rect.move_ip(0, 5)  
+        if self.rect.top > H:
+            self.rect.top = 0
+            self.rect.center = (random.randint(40, W-40), 0)
 
+# ========================
+# GAME OBJECTS AND GROUPS
+# ========================
+
+P1 = Player()
+E1 = Enemy()
+C1 = Coin()
+
+#группа для врагов
+enemies = pygame.sprite.Group()
+enemies.add(E1)
+
+#группа для монеточек
+coins_group = pygame.sprite.Group()
+coins_group.add(C1)
+
+#все спрайты для обновления
+all_sprites = pygame.sprite.Group()
+all_sprites.add(P1)
+all_sprites.add(E1)
+all_sprites.add(C1)
+
+#увеличение скорости врагов каждые 4 секунды
+INC_SPEED = pygame.USEREVENT + 1
+pygame.time.set_timer(INC_SPEED, 4000)
+
+# ========================
+# MAIN GAME LOOP
+# ========================
+
+while True:
+    
+    for event in pygame.event.get():
+        if event.type == INC_SPEED:
+            SPEED += 1  #увеличиваем скорость
         
-        for coin in coins:
-            coin.move()
-            coin.draw()
+        if event.type == QUIT:
+            pygame.quit()
+            exit()
 
-            
-            if (racer.x < coin.x + coin.width and
-                racer.x + racer.width > coin.x and
-                racer.y < coin.y + coin.height and
-                racer.y + racer.height > coin.y):
-                coin.y = random.randint(-100, -40)  # Reset coin
-                coin.x = random.randint(0, screen_width - coin.width)
-                collected_coins += 1
+    #рисуем фон и счетчик монеточек
+    SC.blit(bg, (0, 0))
+    SC.blit(coin_icon, (10, 35))
+    coins_v = font_small.render(f"X{str(COINS)}", True, BLACK)
+    SC.blit(coins_v, (50, 50))
 
-        
-        font = pygame.font.SysFont(None, 30)
-        score_text = font.render(f"Coins: {collected_coins}", True, WHITE)
-        screen.blit(score_text, (screen_width - 150, 20))
+    #перемещаем и рисуем все обьекты
+    for entity in all_sprites:
+        SC.blit(entity.image, entity.rect)
+        entity.move()
+    
+    #чекинг столкновения с врагом
+    if pygame.sprite.spritecollideany(P1, enemies):
+        pygame.mixer.Sound('im/crash.wav').play()
+        time.sleep(0.5)
 
+        SC.fill(RED)
+        SC.blit(game_over, (30, 250))
+        result = font_small.render(f"Your result: {COINS}", True, BLACK)
+        SC.blit(result, (120, 350))
         pygame.display.update()
-        clock.tick(60)
 
-    pygame.quit()
+        for entity in all_sprites:
+            entity.kill()
 
-if __name__ == "__main__":
-    game_loop()
+        time.sleep(2)
+        pygame.quit()
+        sys.exit()
 
+    #чекинг столкновения с монеточками
+    collected = pygame.sprite.spritecollide(P1, coins_group, dokill=False)
+    for coin in collected:
+        COINS += 1
+        coin.rect.top = 0
+        coin.rect.center = (random.randint(40, W-40), 0)
+
+    
+    pygame.display.update()
+    clock.tick(FPS)
